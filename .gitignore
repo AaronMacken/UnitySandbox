@@ -1,6 +1,6 @@
-# =============== #
-# Unity Generated #
-# =============== #
+# ================= #
+# Unity Generated   #
+# ================= #
 
 [Ll]ibrary/
 [Tt]emp/
@@ -8,9 +8,9 @@
 [Bb]uilds/
 [Ll]ogs/
 [Mm]emoryCaptures/
+obj/
 
-# Asset meta data should be included
-# but not the asset store tools folder
+# Asset Store Tools (ignore)
 [Aa]sset[Ss]tore/
 
 # Crash Reports
@@ -37,3 +37,15 @@ sysinfo.txt
 *.VC.db
 .DS_Store
 Thumbs.db
+
+# ================= #
+# Unity Meta Files   #
+# ================= #
+
+# Include all meta files so Unity scene references are preserved
+!Assets/**/*.meta
+!ProjectSettings/*.asset
+
+# Optional: include package manifest files
+!Packages/manifest.json
+!Packages/packages-lock.json
