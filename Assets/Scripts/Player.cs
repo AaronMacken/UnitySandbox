@@ -2,8 +2,7 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System.Collections;
 
-public class Player : MonoBehaviour
-{
+public class Player : MonoBehaviour {
     public float moveSpeed;
     public float jumpForce;
     public float dashForce;
@@ -23,75 +22,74 @@ public class Player : MonoBehaviour
     private bool isJumping = false;
     private float jumpTimeCounter;
 
-    void Awake()
-    {
-        moveSpeed = 5f;
-        jumpForce = 5f;
+    void Awake() {
+        moveSpeed = 10f;
+        jumpForce = 20f;
+        jumpHoldForce = 50f;
         dashForce = 20f;
-        dashDuration = 0.25f;
+        dashDuration = 0.15f;
         dashCooldown = 0.5f;
-        maxJumpDuration = 1f;
-        jumpHoldForce = 5f;
+        maxJumpDuration = .3f;
         playerDirection = 1;
     }
 
-    void Start()
-    {
+    void Start() {
         rigidBody = GetComponent<Rigidbody2D>();
     }
 
-    void FixedUpdate()
-    {
-        if (!isDashing)
-        {
+    void FixedUpdate() {
+        if (!isDashing) {
             rigidBody.linearVelocity = new Vector2(moveInput * moveSpeed, rigidBody.linearVelocity.y);
         }
 
-        if (isJumping && jumpTimeCounter > 0)
-        {
+        if (jumpTimeCounter == 0) {
+            ResetJumpingValues();
+        }
+
+        if (isJumping && jumpTimeCounter >= 0) {
             rigidBody.AddForce(Vector2.up * jumpHoldForce, ForceMode2D.Force);
-            jumpTimeCounter -= Time.fixedDeltaTime; // measurement of time since the last physics step
+            jumpTimeCounter = Mathf.Max(0, jumpTimeCounter - Time.fixedDeltaTime); // measurement of time since the last physics step
         }
     }
 
-    public void OnMove(InputAction.CallbackContext context)
-    {
+    public void OnJump(InputAction.CallbackContext context) {
+        if (context.started && isGrounded) {
+            isJumping = true;
+            isGrounded = false;
+            SetAscendingGravity();
+            rigidBody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
+            jumpTimeCounter = maxJumpDuration;
+        }
+
+        if (context.canceled) {
+            ResetJumpingValues();
+        }
+    }
+
+    public void OnDash(InputAction.CallbackContext context) {
+        if (context.performed && canDash) {
+            StartCoroutine(Dash());
+        }
+    }
+
+    public void OnMove(InputAction.CallbackContext context) {
         moveInput = context.ReadValue<Vector2>().x;
         if (moveInput > 0) playerDirection = 1;
         else if (moveInput < 0) playerDirection = -1;
     }
 
-    public void OnJump(InputAction.CallbackContext context)
-    {
-        if (context.started && isGrounded) // pressed jump
-        {
-            isJumping = true;
-            isGrounded = false;
-            rigidBody.gravityScale = 0;
-            rigidBody.AddForce(Vector2.up * jumpForce, ForceMode2D.Impulse);
-            jumpTimeCounter = maxJumpDuration;
-        }
-        else if (context.canceled) // released jump
-        {
-            isJumping = false;
-            rigidBody.gravityScale = 3;
+    private void OnCollisionEnter2D(Collision2D collision) {
+        if (collision.gameObject.CompareTag("Ground")) {
+            ResetVerticalVelocity();
+            isGrounded = true;
+            canDash = true;
+            SetAscendingGravity();
         }
     }
 
-    public void OnDash(InputAction.CallbackContext context)
-    {
-        if (context.performed && canDash)
-        {
-            StartCoroutine(Dash());
-        }
-    }
-
-    private IEnumerator Dash()
-    {
-        float originalGravity = rigidBody.gravityScale;
-
+    private IEnumerator Dash() {
         rigidBody.gravityScale = 0;
-        rigidBody.linearVelocity = new Vector2(rigidBody.linearVelocity.x, 0);
+        // ResetVerticalVelocity();
 
         canDash = false;
         isDashing = true;
@@ -100,22 +98,25 @@ public class Player : MonoBehaviour
 
         yield return new WaitForSeconds(dashDuration);
 
-        rigidBody.gravityScale = originalGravity;
+        rigidBody.gravityScale = 20;
         isDashing = false;
 
-        if (isGrounded)
-        {
+        if (isGrounded) {
             canDash = true;
         }
     }
 
-    private void OnCollisionEnter2D(Collision2D collision)
-    {
-        if (collision.gameObject.CompareTag("Ground"))
-        {
-            isGrounded = true;
-            canDash = true;
-            rigidBody.gravityScale = 0;
-        }
+    private void SetAscendingGravity() {
+        rigidBody.gravityScale = 10;
+    }
+
+    private void ResetVerticalVelocity() {
+        rigidBody.linearVelocity = new Vector2(rigidBody.linearVelocity.x, 0);
+    }
+
+    private void ResetJumpingValues() {
+        // rigidBody.linearVelocity = new Vector2(rigidBody.linearVelocity.x, 0);
+        isJumping = false;
+        rigidBody.gravityScale = 20;
     }
 }
