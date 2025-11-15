@@ -4,7 +4,12 @@ using System.Collections;
 using Unity.Cinemachine;
 
 public class Player : MonoBehaviour {
-    private Rigidbody2D rigidBody;
+    // Player State Manager
+    private StateMachine stateMachine;
+    public PlayerIdleState IdleState;
+    public PlayerMoveState MoveState;
+
+    public Rigidbody2D rigidBody;
 
     [Header("Movement Variables")]
     public float moveSpeed;
@@ -28,7 +33,7 @@ public class Player : MonoBehaviour {
     private bool isJumping;
     public bool isDashing;
     public bool isDashOffCooldown;
-    private float moveInput;
+    public float moveInput;
     private int playerDirection;
 
     [Header("Camera Falling")]
@@ -45,6 +50,10 @@ public class Player : MonoBehaviour {
     public Vector2 rigidBodyVelocity;
 
     void Awake() {
+        stateMachine = new StateMachine();
+        IdleState = new PlayerIdleState();
+        MoveState = new PlayerMoveState();
+
         playerDirection = 1;
         moveSpeed = 10f;
 
@@ -60,10 +69,13 @@ public class Player : MonoBehaviour {
 
     void Start() {
         rigidBody = GetComponent<Rigidbody2D>();
+        stateMachine.ChangeState(IdleState, this);
     }
 
     void Update() {
-        Debug.DrawRay(player.position, Vector2.right * playerDirection * 2f, Color.white);
+        stateMachine.Tick();
+
+        Debug.DrawRay(player.position, Vector2.right * playerDirection * 1f, Color.white);
 
         Vector3 viewPosition = mainCamera.WorldToViewportPoint(player.position);
 
@@ -75,10 +87,12 @@ public class Player : MonoBehaviour {
     }
 
     void FixedUpdate() {
+        stateMachine.FixedTick();
         CheckGrounded();
 
         RaycastHit2D wallHit = Physics2D.Raycast(player.position, Vector2.right * playerDirection, 0.1f, groundLayer);
 
+        // Can I delete this?
         if (wallHit.collider != null && rigidBody.linearVelocity.y < 0) {
             // We're sliding down while touching a wall → nudge slightly away
             rigidBody.position += Vector2.left * playerDirection * 0.01f;
@@ -89,11 +103,6 @@ public class Player : MonoBehaviour {
 
         if (hasSwitched) {
             rigidBody.MoveRotation(rigidBody.rotation - 360f * Time.fixedDeltaTime);
-        }
-
-        if (!isDashing) {
-            float clampedY = Mathf.Clamp(rigidBody.linearVelocity.y, maxFallSpeed, Mathf.Infinity);
-            rigidBody.linearVelocity = new Vector2(moveInput * moveSpeed, clampedY);
         }
 
         if (isDashing) {
@@ -140,7 +149,7 @@ public class Player : MonoBehaviour {
     public void OnMove(InputAction.CallbackContext context) {
         moveInput = context.ReadValue<Vector2>().x;
         if (moveInput > 0) playerDirection = 1;
-        else if (moveInput < 0) playerDirection = -1;
+        if (moveInput < 0) playerDirection = -1;
     }
 
     public void OnDash(InputAction.CallbackContext context) {
